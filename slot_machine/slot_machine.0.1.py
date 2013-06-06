@@ -24,6 +24,12 @@
 import pygame
 import utility
 
+utility.init()
+utility.set_config_file('config/config.cfg')
+
+print utility.get_config_value('width', 100)
+
+
 pygame.init()
 #D - Display configuration
 screen = pygame.display.set_mode((640, 480))
