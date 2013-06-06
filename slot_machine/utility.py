@@ -16,43 +16,39 @@
 #        - initialize from system configuration file
 #----------------------------------------------------------------------------------------------------------------------------------------------------------------------------
 
-__SYSTEM_CONFIG_DIR = 'config/system.cfg'
-__SYSTEM_CONFIG_FILE = None
-__SYSTEM_CONFIG_MAP = {}
-
 __CONFIG_DIR = ''
-__CONFIG_FILE = None
 __CONFIG_MAP = {}
     
 def init():
-    override_system_config(__SYSTEM_CONFIG_DIR)
-    
+    # Scan local directory for configuration file. Omits if it is not there. This ensures some sort of configuration file is set and
+    # there will be no need to call set_config_file().   
+    try:
+        with open('config.cfg'): pass
+        __CONFIG_DIR = 'config.cfg'
+        set_config_file(__CONFIG_DIR)
+    except IOError:
+        return
+       
 def get_config_value(key, default):
-    __get_config_value(__CONFIG_MAP)
-    
-def override_system_config(directory):
-    __SYSTEM_CONFIG_DIR = directory
-    __SYSTEM_CONFIG_FILE = open(__SYSTEM_CONFIG_DIR, 'r')
-    __SYSTEM_CONFIG_MAP = __populate_map(__SYSTEM_CONFIG_FILE)    
+    value = __CONFIG_MAP.get(key)
+    return value if value else default
     
 def set_config_file(directory):
+    global __CONFIG_DIR, __CONFIG_MAP
     __CONFIG_DIR = directory
-    __CONFIG_FILE = open(__CONFIG_DIR, 'r')
-    __CONFIG_MAP = __populate_map(__CONFIG_FILE)
-    
+    __CONFIG_MAP = __populate_map(open(__CONFIG_DIR, 'r'))
 
-def __get_config_value(key, default, dictionary):
-    value = dictionary.get(key)
-    return value if value else default
+def get_config_path():
+    return __CONFIG_DIR
 
 def __populate_map(configFile):
     line = ''
     configMap = {}
-    
     for line in configFile.readlines():
         tokens = line.strip().split('=')
         if len(tokens) == 2:
             configMap[tokens[0]] = tokens[1]
+            
             
     return configMap
 
