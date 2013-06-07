@@ -9,23 +9,12 @@
 #
 #        This is a slot machine game.
 #
-# Version 0.1:
+# Version 0.3
 #
-#    - Added utility module (for configuration file access)
-#    - Added resource class
-#    - Added init function
-#        -> Loads from configuration file
-#        -> Displays pygame window
-#        -> Loads some of the images use for the interface
-#    - Added deinitialize, update, and render functions (mostly unimplemented, render function draws interface image)
-#    - Added main function, runs and executes the game.
-#
-# Version 0.2
-#
-#    - Added color button images (without text)
-#    - Added Button class
-#        -> x y coordinates - mutator + accessor
-#        -> img reference accessor
+#    - Added text field to button, set and get methods
+#    - Added new class called slot machine. 
+#        -> Can add and extract components
+#        -> Can access or change slot machine image 
 #
 #----------------------------------------------------------------------------------------------------------------------------------------------------------------------------
 
@@ -36,10 +25,11 @@ import utility
 
 class Button:
 
-    def __init__(self, x, y, img_ref):
+    def __init__(self, x, y, text, imgRef):
         self.__x = x
         self.__y = y
-        self.__img_ref = img_ref
+        self.__imgRef = imgRef
+        self.__text = text
 
     def getX(self):
         return self.__x
@@ -58,9 +48,26 @@ class Button:
     def setY(self, y):
         self.__y = y
         
-    def getImageReference(self):
-        return self.__img_ref
+    def getImage(self):
+        return self.__imgRef
     
+    def changeImage(self, imgRef):
+        self.____imgRef = imgRef
+        
+    def getText(self):
+        return self.__text
+    
+    def changeText(self, text):
+        self.__text = text
+    
+class Render:
+    @staticmethod
+    def draw_button(destination, button):
+        destination.blit(button.getImage(), button.getX(), button.getY())
+    
+    @staticmethod    
+    def draw_slotmachine(destination, slotmachine):
+        destination
     
 class Resource:
     normalReel = None
@@ -72,6 +79,30 @@ class Resource:
     blueButton = None
     greenButton = None
     purpleButton = None
+    
+    
+class SlotMachine:
+    def __init__(self, imgRef):
+        self.__imgRef = imgRef
+        self.__components = []
+        
+    def getImage(self):
+        return self.__imgRef
+    
+    def setImage(self, imgRef):
+        self.__imgRef = imgRef
+        
+    def addComponent(self, component):
+        self.__components.append(component)
+        
+    def getComponentAtReference(self, component):
+        return self.__components[component]
+    
+    def getComponentAtIndex(self, index):
+        return self.__components.index(index)
+    
+    def getComponents(self):
+        return self.__components
     
     
 def init():
@@ -101,10 +132,10 @@ def init():
     Resource.greenButton = pygame.image.load('imgs/green_button.png')
     Resource.purpleButton = pygame.image.load('imgs/purple_button.png')
     
-    
-    screen.blit(Resource.slotMachine, (0, 0))
-    
-    return screen, fps
+    # Initialize the Slot Machine
+    slotmachine = SlotMachine(Resource.slotMachine)
+    slotmachine.addComponent()
+    return slotmachine, screen, fps
 
 
 def deinit():
@@ -115,14 +146,17 @@ def update():
     print 's'
     
     
-def render(screen):
-    screen.blit(Resource.redButton, (610, 25))
-    screen.blit(Resource.redButton, (690, 25))
+def render(screen, slotmachine):
+    # Draw Slot Machine Interface
+    screen.blit(slotmachine.getImage(), (0,0))
+    # Draw slot machine components
+    for component in slotmachine.getComponents():
+        screen.blit(component.getImage(), (component.getX(), component.getY()))
    
    
 def main():
     
-    screen, fps = init()
+    slotmachine, screen, fps = init()
 
     clock = pygame.time.Clock()
     keepGoing = True
@@ -138,7 +172,7 @@ def main():
                 keepGoing = False
                 
         update()        
-        render(screen)        
+        render(screen, slotmachine)        
         pygame.display.flip()
         
             
