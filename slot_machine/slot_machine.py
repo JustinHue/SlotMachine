@@ -9,27 +9,57 @@
 #
 #        This is a slot machine game.
 #
-# Version 0.3
+# Version 0.4
 #
-#    - Added text field to button, set and get methods
-#    - Added new class called slot machine. 
-#        -> Can add and extract components
-#        -> Can access or change slot machine image 
+#    - Updated Render class
+#        -> Updated button render function
+#        -> Updated slot machine render function
+#        -> Added draw component function (checks class name and draws corresponding render function)
 #
+#    - Added threading for button even handling
+#    - Added Event Handler object
+#        -> run method implemented
+# 
 #----------------------------------------------------------------------------------------------------------------------------------------------------------------------------
 
 
 #I - Import and initialize
 import pygame
+import threading
 import utility 
+
+class ButtonEventHandler(threading.Thread):
+    
+    def __init__(self, buttonRef):
+        self.__buttonRef = buttonRef
+        self.__isRunning = True
+        self.__meta__buttonX = self.__buttonRef.getX()
+        
+                    mousePos = pygame.mouse.get_pos()
+            buttonX = self.__buttonRef.getX()
+            buttonY = self.__buttonRef.getY()
+            buttonWidth = self.__buttonRef.getWidth()
+            buttonHeight = self.__buttonRef.getHeight()
+        
+    def run(self):
+        while self.__isRunning:
+            pygame.time.wait(1)
+
+            if mousePos[0] >= buttonX && mousePos[0] <= buttonX + buttonWidth &&
+               mousePos[0] >= buttonX && mousePos[0] <= buttonX + buttonWidth
+    
 
 class Button:
 
-    def __init__(self, x, y, text, imgRef):
+    def __init__(self, x, y, width, height, text, imgRef):
         self.__x = x
         self.__y = y
         self.__imgRef = imgRef
         self.__text = text
+        self.__width = width
+        self.__height = height
+        self.__eventhandler = ButtonEventHandler()
+        self.__eventhandler.start()
 
     def getX(self):
         return self.__x
@@ -59,15 +89,43 @@ class Button:
     
     def changeText(self, text):
         self.__text = text
+
+    def getSize(self):
+        return self.getWidth(), self.getHeight()
     
+    def getWidth(self):
+        return self.__width
+        
+    def getHeight(self):
+        return self.__height
+    
+    @staticmethod
+    def isPressed
 class Render:
     @staticmethod
     def draw_button(destination, button):
-        destination.blit(button.getImage(), button.getX(), button.getY())
+        destination.blit(button.getImage(), (button.getX(), button.getY()))
+        myfont = pygame.font.SysFont(None, 24)
+        label = myfont.render(button.getText(), True, (0, 0, 0))
+        labeldims = myfont.size(button.getText())
+        destination.blit(label, (button.getX() + button.getWidth() / 2 - labeldims[0] / 2,
+                                 button.getY() + button.getHeight() / 2 - labeldims[1] / 2))
     
+    @staticmethod
+    def draw_component(destination, component):
+        if component.__class__.__name__ == 'Button':
+            Render.draw_button(destination, component)
+            
+            
     @staticmethod    
     def draw_slotmachine(destination, slotmachine):
-        destination
+        # Draw Slot Machine Interface
+        destination.blit(slotmachine.getImage(), (0,0))        
+        # Draw slot machine components
+        for component in slotmachine.getComponents():
+            Render.draw_component(destination, component)
+            
+    
     
 class Resource:
     normalReel = None
@@ -125,7 +183,7 @@ def init():
 
     Resource.normalReel = pygame.image.load('imgs/reel_normal.png')
     Resource.blurReel = pygame.image.load('imgs/reel_blur.png')
-    Resource.slotMachine = pygame.image.load('imgs/slot_machine.jpg')
+    Resource.slotMachine = pygame.image.load('imgs/slot_machine.png')
     
     Resource.redButton = pygame.image.load('imgs/red_button.png')
     Resource.blueButton = pygame.image.load('imgs/blue_button.png')
@@ -134,7 +192,10 @@ def init():
     
     # Initialize the Slot Machine
     slotmachine = SlotMachine(Resource.slotMachine)
-    slotmachine.addComponent()
+    slotmachine.addComponent(Button(630, 50, 60, 60, 'Quit', Resource.redButton))
+    slotmachine.addComponent(Button(731, 52, 60, 60, 'Reset', Resource.redButton))
+    slotmachine.addComponent(Button(300, 400, 60, 60, 'Spin', Resource.greenButton))
+    
     return slotmachine, screen, fps
 
 
@@ -147,11 +208,8 @@ def update():
     
     
 def render(screen, slotmachine):
-    # Draw Slot Machine Interface
-    screen.blit(slotmachine.getImage(), (0,0))
-    # Draw slot machine components
-    for component in slotmachine.getComponents():
-        screen.blit(component.getImage(), (component.getX(), component.getY()))
+    Render.draw_slotmachine(screen, slotmachine)
+
    
    
 def main():
