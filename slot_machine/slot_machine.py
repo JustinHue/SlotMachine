@@ -20,6 +20,13 @@
 #    - Added deinitialize, update, and render functions (mostly unimplemented, render function draws interface image)
 #    - Added main function, runs and executes the game.
 #
+# Version 0.2
+#
+#    - Added color button images (without text)
+#    - Added Button class
+#        -> x y coordinates - mutator + accessor
+#        -> img reference accessor
+#
 #----------------------------------------------------------------------------------------------------------------------------------------------------------------------------
 
 
@@ -27,19 +34,49 @@
 import pygame
 import utility 
 
+class Button:
+
+    def __init__(self, x, y, img_ref):
+        self.__x = x
+        self.__y = y
+        self.__img_ref = img_ref
+
+    def getX(self):
+        return self.__x
+    
+    def getY(self):
+        return self.__y
+    
+    def setPosition(self, x, y):
+        self.setX(x)
+        self.setY(y)
+        
+    def setX(self, x):
+        self.__x = x
+   
+        
+    def setY(self, y):
+        self.__y = y
+        
+    def getImageReference(self):
+        return self.__img_ref
+    
+    
 class Resource:
     normalReel = None
     blurReel = None
     slotMachine = None
     
 
-    closeButton = None
-    resetButton = None
-    spinButton = None
+    redButton = None
+    blueButton = None
+    greenButton = None
+    purpleButton = None
+    
     
 def init():
     
-    pygame.init()
+    pygame.init()    
     utility.init()    
 
     # Load Settings via Configuration File 
@@ -59,24 +96,29 @@ def init():
     Resource.blurReel = pygame.image.load('imgs/reel_blur.png')
     Resource.slotMachine = pygame.image.load('imgs/slot_machine.jpg')
     
-    Resource.closeButton = pygame.image.load('imgs/button_close.png')
-    Resource.resetButton = pygame.image.load('imgs/button_reset.png')
-    Resource.spinButton = pygame.image.load('imgs/spin_button.png')
+    Resource.redButton = pygame.image.load('imgs/red_button.png')
+    Resource.blueButton = pygame.image.load('imgs/blue_button.png')
+    Resource.greenButton = pygame.image.load('imgs/green_button.png')
+    Resource.purpleButton = pygame.image.load('imgs/purple_button.png')
+    
     
     screen.blit(Resource.slotMachine, (0, 0))
     
     return screen, fps
 
-    
+
 def deinit():
     pygame.quit()
     
+
 def update():
     print 's'
     
+    
 def render(screen):
-   screen.blit(Resource.buttonClose, (610, 25))
-   screen.blit(Resource.buttonReset, (690, 25))
+    screen.blit(Resource.redButton, (610, 25))
+    screen.blit(Resource.redButton, (690, 25))
+   
    
 def main():
     
