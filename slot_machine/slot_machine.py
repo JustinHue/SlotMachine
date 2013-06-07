@@ -9,15 +9,13 @@
 #
 #        This is a slot machine game.
 #
-# Version 0.5
+# Version 0.6
 #
-#    - Added meta data on ButtonEventHandler for quick referencing on the button
-#    - Added state listeners on the button object (e.g hover, press, release)
-#    - Changed run method on ButtonEventHandler to execute event listeners 
-#    - Added static class ExEventHandler (a storage place for our event handler functions)
-#        -> quit_button_hover_listener(), quit_button_release_listener(), quit_button_press_listener()
-#        -> reset_button_hover_listener(), reset_button_release_listener(), reset_button_press_listener()
-#    - Made the buttons scale and work with even listeners
+#    - Added state constants to ButtonEventHandler and a field variable to keep track of the state.
+#      This also fixes any issues if two different buttons are set to the same event handler callback routine.
+#    - Added flags for release, hover, etc.
+#    - Added isHovering, isPressed methods
+#    - Added enable attribute to button class
 #
 #----------------------------------------------------------------------------------------------------------------------------------------------------------------------------
 
@@ -46,45 +44,48 @@ class ExEventHandler:
         if hover_state:
             button.changeImage(Resource.purpleButton)
             pygame.mouse.set_cursor(*pygame.cursors.diamond)
-             
         else:
             button.changeImage(Resource.redButton)
             pygame.mouse.set_cursor(*pygame.cursors.arrow)
+
+            
         
     @staticmethod
     def button_release_listener(button, m1, m2, m3, x, y):
         button.changeWidth(60)
         button.changeHeight(60)        
-        print 'release'
-       
+
+
     @staticmethod
     def button_press_listener(button, m1, m2, m3, x, y):
         button.changeWidth(55)
         button.changeHeight(55)
-        print 'press'
+
+
+    @staticmethod
+    def spin_button_hover_listener(button, hover_state, x, y):
+        if button.isEnabled():
+            if hover_state:
+                button.changeImage(Resource.redButton)
+                pygame.mouse.set_cursor(*pygame.cursors.diamond)
+            else:
+                button.changeImage(Resource.greenButton)
+                pygame.mouse.set_cursor(*pygame.cursors.arrow)
+
+            
         
     @staticmethod
-    def reset_button_hover_listener(button, hover_state, x, y):
-        if hover_state:
-            button.changeImage(Resource.purpleButton)
-            pygame.mouse.set_cursor(*pygame.cursors.diamond)
-             
-        else:
-            button.changeImage(Resource.redButton)
-            pygame.mouse.set_cursor(*pygame.cursors.arrow)
-        
-    @staticmethod
-    def reset_button_release_listener(button, m1, m2, m3, x, y):
+    def spin_button_release_listener(button, m1, m2, m3, x, y):
         button.changeWidth(60)
         button.changeHeight(60)        
-        print 'release'
-       
+
+
     @staticmethod
-    def reset_button_press_listener(button, m1, m2, m3, x, y):
+    def spin_button_press_listener(button, m1, m2, m3, x, y):
         button.changeWidth(55)
         button.changeHeight(55)
-        print 'press'
-                
+
+
          
 class ButtonEventHandler(threading.Thread):
     
@@ -99,6 +100,9 @@ class ButtonEventHandler(threading.Thread):
         self.__meta__buttonWidth = self.__buttonRef.getWidth()
         self.__meta__buttonHeight = self.__buttonRef.getHeight()
 
+        self.__hover = False
+        self.__pressed = False
+        
         
     def run(self):
         while self.__isRunning:
@@ -110,18 +114,36 @@ class ButtonEventHandler(threading.Thread):
             mousePos[0] <= self.__meta__buttonX + self.__meta__buttonWidth and \
             mousePos[1] >= self.__meta__buttonY and \
             mousePos[1] <= self.__meta__buttonY + self.__meta__buttonHeight:
+            
+                self.__hover = True
+                
                 self.__buttonRef.getOnHoverListener()(self.__buttonRef, True, mousePos[0], mousePos[1])
                 mousePress = pygame.mouse.get_pressed()
-                if mousePress[0] or mousePress[1] or mousePress[2]:
-                    self.__buttonRef.getOnPressListener()(self.__buttonRef, mousePress[0], mousePress[1],
-                                                        mousePress[2], mousePos[0], mousePos[1])
-                else:
-                    self.__buttonRef.getOnReleaseListener()(self.__buttonRef, mousePress[0], mousePress[1],
-                                                        mousePress[2], mousePos[0], mousePos[1])
-            else:
-                self.__buttonRef.getOnHoverListener()(self.__buttonRef, False, mousePos[0], mousePos[1])
-    
 
+                if mousePress[0]:
+                    self.__buttonRef.getOnPressListener()(self.__buttonRef, mousePress[0], mousePress[1], 
+                                                          mousePress[2], mousePos[0], mousePos[1])
+                    self.__pressed = True
+                elif self.__pressed: 
+                    self.__buttonRef.getOnReleaseListener()(self.__buttonRef, mousePress[0], mousePress[1], 
+                                                            mousePress[2], mousePos[0], mousePos[1])
+                    self.__pressed = False
+                    
+            elif self.__hover:
+                self.__buttonRef.getOnHoverListener()(self.__buttonRef, False, mousePos[0], mousePos[1])
+                self.__pressed = False
+                self.__buttonRef.getOnReleaseListener()(self.__buttonRef, mousePress[0], mousePress[1], 
+                                                        mousePress[2], mousePos[0], mousePos[1])                
+                self.__hover = False
+               
+    def isHovering(self):
+        return self.__hover
+    
+    def isPressed(self):
+        return self.__pressed
+
+
+    
 class Button:
 
     def __init__(self, x, y, width, height, text, imgRef):
@@ -131,17 +153,30 @@ class Button:
         self.__text = text
         self.__width = width
         self.__height = height
-        self.__eventhandler = ButtonEventHandler(self)
-        # states
-        #self.__hover = False
-        #self.__pressed = False
+        self.__eventthread = ButtonEventHandler(self)
+
+        self.__enabled = True
+        
         # Event listeners
         self.__hoverEventListener = None
         self.__pressEventListener = None
         self.__releaseEventListener = None
         
-        self.__eventhandler.start()
-
+        self.__eventthread.start()
+        
+    def isEnabled(self):
+        return self.__enabled
+    
+    def enable(self, boolean):
+        self.__enabled = boolean
+        
+    def isHovering(self):
+        return self.__eventthread.isHovering()
+    
+    def isPressed(self):
+        return self.__eventthread.isPressed()
+    
+    
     def getX(self):
         return self.__x
     
@@ -289,14 +324,23 @@ def init():
     # Initialize the Slot Machine
     slotmachine = SlotMachine(Resource.slotMachine)
     quitButton = Button(630, 50, 60, 60, 'Quit', Resource.redButton)
-    quitButton.setOnHoverListener(ExEventHandler.quit_button_hover_listener)
-    quitButton.setOnPressListener(ExEventHandler.quit_button_press_listener)
-    quitButton.setOnReleaseListener(ExEventHandler.quit_button_release_listener)
+    quitButton.setOnHoverListener(ExEventHandler.button_hover_listener)
+    quitButton.setOnPressListener(ExEventHandler.button_press_listener)
+    quitButton.setOnReleaseListener(ExEventHandler.button_release_listener)
     slotmachine.addComponent(quitButton)
     
-    slotmachine.addComponent(Button(731, 52, 60, 60, 'Reset', Resource.redButton))
-    slotmachine.addComponent(Button(300, 400, 60, 60, 'Spin', Resource.greenButton))
-    
+    resetButton = Button(731, 52, 60, 60, 'Reset', Resource.redButton)
+    resetButton.setOnHoverListener(ExEventHandler.button_hover_listener)
+    resetButton.setOnPressListener(ExEventHandler.button_press_listener)
+    resetButton.setOnReleaseListener(ExEventHandler.button_release_listener)
+    slotmachine.addComponent(resetButton)
+       
+    spinButton = Button(420, 495, 60, 60, 'Spin', Resource.greenButton)
+    spinButton.setOnHoverListener(ExEventHandler.spin_button_hover_listener)
+    spinButton.setOnPressListener(ExEventHandler.spin_button_press_listener)
+    spinButton.setOnReleaseListener(ExEventHandler.spin_button_release_listener)
+    slotmachine.addComponent(spinButton)
+
     return slotmachine, screen, fps
 
 
