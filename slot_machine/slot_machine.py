@@ -9,17 +9,15 @@
 #
 #        This is a slot machine game.
 #
-# Version 0.7
+# Version 0.8
 #
-#    - Removed threading for event handler due to conflicts with pygame
-#    - Added poll components method for slot machine to sync component events with main loop
-#    - Added shutdown method for slotmachine
-#    - Made Reset and Exit button actually work
-#    - bet amount and credits now render
-#    - Bet amount ranges between 1, 2, 5, 10, 25, 50, 100
-#    - Greyed out spin button if bet amount exceeds credit amount
-#    - Started implementing reels
-#    - Added slot_machine_brain module for easy referencing. Might not use exact code.
+#    - Removing Reels class. Instead using variables in Slot Machine class to define reel outcome
+#    - Cropped reels for default position
+#    - Added spinning animation for all 5 reels, each progressive reel gets faster
+#    - Now updates credits based on results
+#    - Fixed reels so that they don't display result right away when animating
+#    - Fixed reset button
+#    - Added jackpot message
 #
 #----------------------------------------------------------------------------------------------------------------------------------------------------------------------------
 
@@ -27,11 +25,11 @@
 #I - Import and initialize
 import pygame
 import utility 
+import random
 
 global slotmachine
 
 class Resource:
-    normalReel = None
     blurReel = None
     slotMachine = None
     
@@ -43,7 +41,8 @@ class Resource:
     blackButton = None
     
     betAmountOptions = [1, 2, 5, 10, 25, 50, 100]
-    
+    outcomePositions = ['Orange', 'Banana', 'Pear', 'Cherry', 'Seven', 'Bar']
+    animatingline = [' ', ' ', ' ', ' ', ' ']
     
 class ExEventHandler:
     
@@ -90,6 +89,7 @@ class ExEventHandler:
         button.changeWidth(60)
         button.changeHeight(60)    
         slotmachine.shutdown()    
+        
 
 
     @staticmethod
@@ -114,8 +114,10 @@ class ExEventHandler:
         global slotmachine
         button.changeWidth(60)
         button.changeHeight(60)    
-        slotmachine.setCreditAmount(1000)
-        slotmachine.changeBet(5)
+        if not slotmachine.isSpinning():
+            slotmachine.setCreditAmount(1000)
+            slotmachine.changeBet(5)
+
 
     @staticmethod
     def reset_button_press_listener(button, m1, m2, m3, x, y):
@@ -133,21 +135,20 @@ class ExEventHandler:
                 button.changeImage(Resource.greenButton)
                 pygame.mouse.set_cursor(*pygame.cursors.arrow)
 
-            
-            
-            
-        
+
     @staticmethod
     def spin_button_release_listener(button, m1, m2, m3, x, y):
         button.changeWidth(60)
         button.changeHeight(60)        
+        slotmachine.spin()
 
 
     @staticmethod
     def spin_button_press_listener(button, m1, m2, m3, x, y):
+        global slotmachine
         button.changeWidth(55)
         button.changeHeight(55)
-
+        
 
          
 class ButtonEventHandler():
@@ -171,6 +172,9 @@ class ButtonEventHandler():
 
         mousePos = pygame.mouse.get_pos()
         mousePress = pygame.mouse.get_pressed()
+        
+        if self.__buttonRef.isEnabled() == False:
+            return
         
         if mousePos[0] >= self.__meta__buttonX and \
         mousePos[0] <= self.__meta__buttonX + self.__meta__buttonWidth and \
@@ -204,13 +208,7 @@ class ButtonEventHandler():
         self.__isRunning = False
     
     
-class Reels:
-    
-    def __init__(self, imgRef, betline):
-        self.__imgRef = imgRef
-        
-    
-        
+
 class Button:
 
     def __init__(self, x, y, width, height, text, imgRef):
@@ -327,31 +325,89 @@ class Render:
             Render.draw_button(destination, component)
             
             
-    @staticmethod    
+    @staticmethod
     def draw_slotmachine(destination, slotmachine):
+        
         # Draw Slot Machine Interface
         destination.blit(slotmachine.getImage(), (0,0))        
         # Draw slot machine components
+        
         for component in slotmachine.getComponents():
             Render.draw_component(destination, component)
             
         myfont = pygame.font.SysFont(None, 46)
         label = myfont.render(str(slotmachine.getCreditAmount()), True, (255, 255, 255))            
         destination.blit(label, (50, 480))
-            
+   
         label = myfont.render(str(slotmachine.getBetAmount()), True, (255, 255, 255))            
         destination.blit(label, (560, 480))
     
+        label = myfont.render(str(slotmachine.getWinnings()), True, (255, 255, 255))            
+        destination.blit(label, (650, 480))
+        
+        if slotmachine.jackpot():
+            label = myfont.render(str("JACKPOT!"), True, (255, 0, 0))            
+            destination.blit(label, (330, 65))
+        
+        reelCount = 0
+        reelSize = 300
+        currentReel = slotmachine.getCurrentReel()
+        currentSlotBetLine = slotmachine.getBetLine()
+        
+        if Resource.animatingline != slotmachine.getLastLine():
+            Resource.animatingline = slotmachine.getLastLine()
 
-    
+        if Resource.animatingline[currentReel] != currentSlotBetLine[currentReel]:
+            Resource.animatingline[currentReel] = currentSlotBetLine[currentReel]
+        else:
+            Resource.animatingline = slotmachine.getLastLine()
+
+        # Draw reels
+        for reelOutcome in Resource.animatingline:
+            reelCopy = Resource.normalReel.copy()
+            
+            if currentReel == reelCount: 
+                cropTop = pygame.transform.chop(reelCopy,
+                                                     pygame.Rect(0, 0, 
+                                                                 0, slotmachine.getRollingIndex() + 330 + Resource.outcomePositions.index(reelOutcome)*70))
+                cropBottom = pygame.transform.chop(cropTop, pygame.Rect(0, reelSize, 0, 1000))
+                destination.blit(cropBottom, (90 + reelCount * 138, 135))
+            else:
+                cropTop = pygame.transform.chop(reelCopy,
+                                                     pygame.Rect(0, 0, 
+                                                                 0, 330 + Resource.outcomePositions.index(reelOutcome)*70))
+                cropBottom = pygame.transform.chop(cropTop, pygame.Rect(0, reelSize, 0, 1000))
+                destination.blit(cropBottom, (90 + reelCount * 138, 135))
+                
+            reelCount += 1
+            
 class SlotMachine:
+    ANIMATION_SPEED = 50
+    
+    NUM_OF_REELS = 5
+    NUMBER_OF_SPINS_PER_REEL = 3
+    
     def __init__(self, imgRef):
         self.__imgRef = imgRef
         self.__components = []
         self.__credits = 1000
         self.__betAmount = 5
         self.__isOn = True
+        self.__outcome = [0,0,0,0,0]
+        # [ FRUIT, FRUIT, FRUIT, FRUIT, FRUIT]
+        self.__betline = ["Orange", "Orange", "Orange", "Orange", "Orange"]
+        self.__lastline = list(self.__betline)
         
+        self.__currentReel = 0
+        self.__reelRolling = 0
+        self.__countNumReelSpin = 0
+        self.__spinning = False
+        self.__winnings = 0
+        self.__jackpot = False
+        
+    def jackpot(self):
+        return self.__jackpot
+    
     def getImage(self):
         return self.__imgRef
     
@@ -394,6 +450,122 @@ class SlotMachine:
     def setCreditAmount(self, creditAmount):
         self.__credits = creditAmount
         
+    def getRollingIndex(self):
+        return self.__reelRolling
+    
+    def isSpinning(self):
+        return self.__spinning
+    
+    def animateSpin(self):
+        self.__reelRolling += SlotMachine.ANIMATION_SPEED
+        
+        if self.__reelRolling >= 454:
+            self.__reelRolling = 0
+            self.__countNumReelSpin += 1
+            
+        if self.__countNumReelSpin == SlotMachine.NUMBER_OF_SPINS_PER_REEL:
+            self.__currentReel += 1
+            self.__countNumReelSpin = 0
+            
+        if self.__currentReel == SlotMachine.NUM_OF_REELS:
+            self.__spinning = False
+            self.checkSpin()
+            self.__lastline = list(self.__betline)
+            self.__currentReel = 0
+            
+    def getCurrentReel(self):
+        return self.__currentReel
+    
+    
+    def spin(self):
+
+        # Make the bet
+        self.__spinning = True
+        self.__credits -= self.__betAmount
+        
+        for spin in range(5):
+            self.__outcome[spin] = random.randrange(1,100,1)
+            # Spin those Reels!
+            if self.__outcome[spin] >= 1 and self.__outcome[spin] <= 34:  # 35.00% Chance
+                self.__betline[spin] = "Orange"
+            if self.__outcome[spin] >= 35 and self.__outcome[spin] <=59:  # 25.00% Chance
+                self.__betline[spin] = "Banana"
+            if self.__outcome[spin] >= 60 and self.__outcome[spin] <=79:  # 20.00% Chance
+                self.__betline[spin] = "Pear"
+            if self.__outcome[spin] >= 80 and self.__outcome[spin] <=91:  # 12.00% Chance
+                self.__betline[spin] = "Cherry"
+            if self.__outcome[spin] >= 92 and self.__outcome[spin] <=99:  # 7.00%  Chance
+                self.__betline[spin] = "Bar"
+            if self.__outcome[spin] >= 100:                               # 1.00%  Chance
+                self.__betline[spin] = "Seven"
+ 
+    def getWinnings(self):
+        return self.__winnings
+    
+    
+    def checkSpin(self):
+        
+        self.__winnings = 0
+        self.__jackpot = False
+        
+        # Match 5
+        if self.__betline.count("Orange") == 5:
+            self.__winnings = self.__betAmount*15
+        elif self.__betline.count("Banana") == 5:
+            self.__winnings = self.__betAmount*25
+        elif self.__betline.count("Pear") == 5:
+            self.__winnings = self.__betAmount*50
+        elif self.__betline.count("Cherry") == 5:
+            self.__winnings = self.__betAmount*100
+        elif self.__betline.count("Bar") == 5:
+            self.__winnings = self.__betAmount*250
+        elif self.__betline.count("Seven") == 5:
+            self.__winnings = self.__betAmount*500
+            self.__jackpot = True
+    
+            
+        # Match 4
+        elif self.__betline.count("Orange") == 4:
+            self.__winnings = self.__betAmount*10
+        elif self.__betline.count("Banana") == 4:
+            self.__winnings = self.__betAmount*17
+        elif self.__betline.count("Pear") == 4:
+            self.__winnings = self.__betAmount*33
+        elif self.__betline.count("Cherry") == 4:
+            self.__winnings = self.__betAmount*66
+        elif self.__betline.count("Bar") == 4:
+            self.__winnings = self.__betAmount*166
+        elif self.__betline.count("Seven") == 4:
+            self.__winnings = self.__betAmount*500
+            
+        # Match 3
+        elif self.__betline.count("Orange") == 3:
+            self.__winnings = self.__betAmount*7
+        elif self.__betline.count("Banana") == 3:
+            self.__winnings = self.__betAmount*11
+        elif self.__betline.count("Pear") == 3:
+            self.__winnings = self.__betAmount*23
+        elif self.__betline.count("Cherry") == 3:
+            self.__winnings = self.__betAmount*44
+        elif self.__betline.count("Bar") == 3:
+            self.__winnings = self.__betAmount*110
+        elif self.__betline.count("Seven") == 3:
+            self.__winnings = self.__betAmount*250
+            
+        
+        self.__credits += self.__winnings
+        
+        
+    def stopSpin(self):
+        self.__spinning = False
+        
+        
+    def getBetLine(self):
+        return self.__betline
+    
+    def getLastLine(self):
+        return self.__lastline
+
         
 def init():
     
@@ -463,7 +635,11 @@ def update(slotmachine):
     else:
         slotmachine.getComponentAtIndex(2).enable(True)
     
+    
+            
 def render(screen, slotmachine):
+    if slotmachine.isSpinning():
+        slotmachine.animateSpin()
     Render.draw_slotmachine(screen, slotmachine)
 
 
